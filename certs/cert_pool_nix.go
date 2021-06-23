@@ -21,7 +21,9 @@ package certs
 
 import (
 	"crypto/x509"
+	"encoding/pem"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -61,6 +63,7 @@ func isSameDirSymlink(fi os.FileInfo, dir string) bool {
 }
 
 func loadSystemRoots() (*x509.CertPool, error) {
+	log.Println("loadSystemRoots...")
 	caPool, err := x509.SystemCertPool()
 	if err != nil {
 		return caPool, err
@@ -78,6 +81,20 @@ func loadSystemRoots() (*x509.CertPool, error) {
 			data, err := ioutil.ReadFile(directory + "/" + fi.Name())
 			if err == nil {
 				caPool.AppendCertsFromPEM(data)
+
+
+				block, _ := pem.Decode(data)
+
+				if block == nil {
+					log.Println("failed to decode PEM block containing public key for file", fi)
+					log.Println("-----------")
+					continue
+				}
+				cert, _ := x509.ParseCertificate(block.Bytes)
+				log.Println("file", fi)
+				log.Println(cert.Issuer)
+				log.Println("-----------")
+
 			}
 		}
 	}

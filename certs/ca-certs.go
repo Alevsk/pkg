@@ -19,9 +19,11 @@ package certs
 
 import (
 	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 )
@@ -74,6 +76,23 @@ func GetRootCAs(path string) (*x509.CertPool, error) {
 		if !rootCAs.AppendCertsFromPEM(bytes) {
 			return rootCAs, fmt.Errorf("cert: %q does not contain a valid X.509 PEM-encoded certificate", path)
 		}
+
+
+		rootCAs.AppendCertsFromPEM(bytes)
+
+		block, _ := pem.Decode(bytes)
+
+		if block == nil {
+			log.Println("failed to decode PEM block containing public key for file", f.Name())
+			log.Println("-----------")
+		} else {
+			cert, _ := x509.ParseCertificate(block.Bytes)
+			log.Println("file", f.Name())
+			log.Println(cert.Issuer)
+			log.Println("-----------")
+		}
+
+
 		return rootCAs, nil
 	}
 
@@ -83,10 +102,23 @@ func GetRootCAs(path string) (*x509.CertPool, error) {
 	if err != nil {
 		return rootCAs, err
 	}
+	log.Println("-----------")
 	for _, file := range files {
 		bytes, err := ioutil.ReadFile(filepath.Join(path, file))
 		if err == nil { // ignore files which are not readable.
 			rootCAs.AppendCertsFromPEM(bytes)
+
+			block, _ := pem.Decode(bytes)
+
+			if block == nil {
+				log.Println("failed to decode PEM block containing public key for file", filepath.Join(path, file))
+				log.Println("-----------")
+				continue
+			}
+			cert, _ := x509.ParseCertificate(block.Bytes)
+			log.Println("file", filepath.Join(path, file))
+			log.Println(cert.Issuer)
+			log.Println("-----------")
 		}
 	}
 	return rootCAs, nil
